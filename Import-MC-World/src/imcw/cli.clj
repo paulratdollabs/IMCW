@@ -90,8 +90,7 @@
 
     (when help
       (println (usage (:summary parsed)))
-      (when-not repl
-        (System/exit 0)))
+      (System/exit 0))
 
     (cond (>= (count arguments) 1)
           (case (keyword (first arguments))
@@ -121,7 +120,7 @@
 
           :else
           (do
-            (println "No command specified, try test-connection or qlearn")
+            (println "No command specified, try import")
             (System/exit 0)))))
 
 (defn -main
