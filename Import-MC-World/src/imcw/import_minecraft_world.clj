@@ -63,7 +63,9 @@
         json (and fn (.exists (io/file fn)) (json/read-str (slurp fn)))]
     (if (not json)
       (do (println "File not found: " fn) (System/exit -1))
-      (import-world json dontdehydrate adjust))))
+      (if (get json "blocks")
+        (import-world (get json "blocks") dontdehydrate adjust)
+        (import-world json dontdehydrate adjust)))))
 
 (defn world-dimensions
   [world]
