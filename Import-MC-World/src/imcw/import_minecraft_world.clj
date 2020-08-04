@@ -91,7 +91,7 @@
         mins (map first (world-dimensions world))
         adjcoords (map - objcoords mins)
         [x z y] adjcoords]
-    (+ z (* y zsize) (* x zsize ysize))))
+    (+ z (* x zsize) (* y zsize xsize)))) ; was (+ z (* y zsize) (* x zsize ysize))
 
 (defn compute-mda-index
   [world objcoords]
@@ -116,11 +116,28 @@
                            (* (- y1 y0) (- y1 y0))))]
     dist))
 
+(defn same-plan-position
+  [v0 v1]
+  ;(println "v0=" v0 "v1=" v1)
+  (let [[x0 z0 y0] (first v0)
+        [x1 z1 y1] (first v1)]
+    (and (== x0 x1) (== y0 y1))))
+
 (defn door-finder-aux
   [world voxels]
   (loop [doorparts [(first voxels)]
          unusedparts (rest voxels)]
     (if (or (empty? unusedparts)
+            (>= (distance-between-voxels world (last doorparts) (first unusedparts)) 2))
+      [(map first doorparts) unusedparts]
+      (recur (conj doorparts (first unusedparts)) (rest unusedparts)))))
+
+(defn single-door-finder-aux
+  [world voxels]
+  (loop [doorparts [(first voxels)]
+         unusedparts (rest voxels)]
+    (if (or (empty? unusedparts)
+            (not (same-plan-position (last doorparts) (first unusedparts)))
             (>= (distance-between-voxels world (last doorparts) (first unusedparts)) 2))
       [(map first doorparts) unusedparts]
       (recur (conj doorparts (first unusedparts)) (rest unusedparts)))))
@@ -133,6 +150,17 @@
              unused doorvoxels]
         (if (not (empty? unused))
           (let [[part remaining] (door-finder-aux world unused)]
+            (recur (conj parts part) remaining))
+          parts)))))
+
+(defn single-door-finder
+  [world dtype]
+  (let [doorvoxels (get-world-objects-of-type world dtype)]
+    (if (not (empty? doorvoxels))
+      (loop [parts []
+             unused doorvoxels]
+        (if (not (empty? unused))
+          (let [[part remaining] (single-door-finder-aux world unused)]
             (recur (conj parts part) remaining))
           parts)))))
 
@@ -339,9 +367,9 @@
 
 ;;; Fin
 
-;;; (def world (import-world-from-file  "/Users/paulr/checkouts/bitbucket/asist_rita/Code/data/blocks_in_building_2.json")) ;[-35 -9 0]
+;;; (def world (import-world-from-file  "/Users/paulr/checkouts/bitbucket/asist_rita/Code/data/blocks_in_building_2.json" false)) ;[-35 -9 0]
 
-;;; (def world (import-world-from-file  "/Users/paulr/checkouts/bitbucket/asist_rita/Code/data/blocks_in_building_falcon_m.json")) ;[-35 -9 0]
+;;; (def world (import-world-from-file  "/Users/paulr/checkouts/bitbucket/asist_rita/Code/data/blocks_in_building_falcon_m.json" false)) ;[-35 -9 0]
 ;;; (def w-dimensions (world-dimensions world))
 ;;; (def w-size (world-size world))
 ;;; (def w-types (world-object-types world))
@@ -355,8 +383,11 @@
 ;;; (def all-doors (concat w-doors a-doors d-doors i-doors))
 ;;; (pprint all-doors)
 ;;; (def wdoors (door-finder world :wooden_door))
+;;; (def swdoors (single-door-finder world :wooden-door))
 ;;; (def alldoors (apply concat (map (fn [dtype] (door-finder world dtype)) [:wooden_door :acacia_door :dark_oak_door :iron_door])))
+;;; (def allsdoors (apply concat (map (fn [dtype] (single-door-finder world dtype)) [:wooden_door :acacia_door :dark_oak_door :iron_door])))
 ;;; (pprint alldoors)
+;;; (pprint allsdoors)
 ;;; (print-doors-as-clojure alldoors)
 ;;; (def mca (make-minecraft-array world))
 ;;; (print-world world mca)
