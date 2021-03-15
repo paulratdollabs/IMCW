@@ -106,11 +106,13 @@
                   a-doors (get-world-objects-of-type world :acacia_door)
                   d-doors (get-world-objects-of-type world :dark_oak_door)
                   i-doors (get-world-objects-of-type world :iron_door)
+                  s-doors (get-world-objects-of-type world :spruce_door) ; New in Saturn
                   s-gates (get-world-objects-of-type world :spruce_fence_gate)
                   f-gates (get-world-objects-of-type world :fence_gate)
-                  all-doors-and-gates (concat w-doors a-doors d-doors i-doors)
+                  b-gates (get-world-objects-of-type world :birch_fence_gate) ; New in Saturn
+                  all-doors-and-gates (concat w-doors a-doors d-doors i-doors s-doors s-gates f-gates b-gates)
                   alldoors {:doors (apply concat (map (fn [dtype] (single-door-finder world dtype))
-                                              [:wooden_door :acacia_door :dark_oak_door :iron_door]))}]
+                                              [:wooden_door :acacia_door :dark_oak_door :iron_door :spruce_door]))}]
               (if pmap
                 (let [mca (make-minecraft-array world)]
                   (print-world world mca)))
