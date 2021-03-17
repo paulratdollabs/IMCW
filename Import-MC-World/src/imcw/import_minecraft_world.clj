@@ -18,7 +18,22 @@
             [clojure.java.io :as io])
   (:gen-class)) ;; required for uberjar
 
-#_(in-ns 'rita.state-estimation.import-minecraft-world)
+#_(in-ns 'imcw.import-minecraft-world)
+
+(defn import-world-from-saved-data
+  [json-map]
+    (loop [data json-map maxx -10000 minx 100000 maxy -10000 miny 100000 maxz -10000 minz 100000
+           retained {}]
+      (let [datum (first data)]
+        (if (not (empty? data))
+          (let [coordinates (first datum)
+                [x z y] coordinates]
+            (recur (rest data)
+                   (Math/max maxx x) (Math/min minx x)
+                   (Math/max maxy y) (Math/min miny y)
+                   (Math/max maxz z) (Math/min minz z)
+                   (conj retained {[x z y] (keyword (second datum))})))
+          {:minx minx :maxx maxx :miny miny :maxy maxy :minz minz :maxz maxz :data retained}))))
 
 ;;; Removes air, converts coordinates into numbers and calculates the minimum and maximum
 ;;; of each dimension
@@ -66,6 +81,16 @@
       (if (get json "blocks")
         (import-world (get json "blocks") dontdehydrate adjust)
         (import-world json dontdehydrate adjust)))))
+
+(defn import-world-from-saved-file
+  [fn & adj]
+  (let [adjust (if (empty? adj) [0 0 0] (first adj))
+        json (and fn (.exists (io/file fn)) (json/read-str (slurp fn)))]
+    (if (not json)
+      (do (println "File not found: " fn) (System/exit -1))
+      (if (get json "data")
+        (import-world-from-saved-data (get json "data"))
+        json))))
 
 (defn world-dimensions
   [world]
@@ -243,22 +268,49 @@
 
    :wooden_door \D
    :acacia_door \D
+   :spruce_door \D                      ;new in Saturn
    :dark_oak_door \D
    :iron_door \D
    :spruce_fence_gate \D
+   :birch_fence_gate \D                 ;new in Saturn
    :fence_gate \[
    })
 
-#_(def ^:dynamic *objects-of-interest* {})
+(def ^:dynamic *objects-of-interest* {})
 
-#_(defn find-objects-of-interest
+(def objects-of-interest
+   {:anvil "victim-A" #_"anvil" ; TB0.2 and TB0/3
+    ;;:bookshelf "bookshelf"
+    ;; :cauldron "victim-C" #_"cauldron"  ; TB0.2 and TB0/3
+    ;; :chest "chest"
+    :table "table"
+    :dispenser "dispenser"
+    :flower_pot "flower pot"
+    ;; :furnace "furnace"
+    :ladder "ladder"
+    :lever "switch"
+    ;; :nether_brick_stairs "stairs"
+    ;; :oak_stairs "stairs"
+    ;; :quartz_stairs "stairs"
+    :button "button"
+    :wall_sign "wall sign"
+    :banner "wall_banner"
+    :block_victim_1 "victim-G" #_"gold_block"  ; TB0.4 TB0.5 Yellow victim
+    :block_victim_2 "victim-Y" #_"prismarine"  ; TB0/4 TB0.5 Green victim
+    :gold_block "victim-Y" #_"gold_block"  ; TB0.4 TB0.5 Yellow victim
+    :prismarine "victim-G" #_"prismarine"  ; TB0/4 TB0.5 Green victim
+    ;; :wool "victim-W" #_"wool"
+    })  ; TB0.2 and TB0/3
+
+(defn find-objects-of-interest
   [world]
   (let [found-ooi (into {} (map (fn [[kw nme]]
                                   {kw (get-world-objects-of-type world kw)})
                                objects-of-interest))]
     (def ^:dynamic *objects-of-interest* found-ooi)))
 
-#_(defn print-object-of-interest-as-pamela-constructors[]
+(defn print-object-of-interest-as-pamela-constructors
+  []
   (doseq [[kw soo] *objects-of-interest*]
     (let [pclassname (str "Minecraft-object-" (name kw))]
       (println (str "(defpclass " pclassname " [iblx ibly iblz itrx itry itrz vname] :inherit [RectangularVolume])"))))
@@ -385,7 +437,7 @@
 ;;; (def wdoors (door-finder world :wooden_door))
 ;;; (def swdoors (single-door-finder world :wooden-door))
 ;;; (def alldoors (apply concat (map (fn [dtype] (door-finder world dtype)) [:wooden_door :acacia_door :dark_oak_door :iron_door])))
-;;; (def allsdoors (apply concat (map (fn [dtype] (single-door-finder world dtype)) [:wooden_door :acacia_door :dark_oak_door :iron_door])))
+;;; (def allsdoors (apply concat (map (fn [dtype] (single-door-finder world dtype)) [:wooden_door :acacia_door :dark_oak_door :iron_door :birch_door])))
 ;;; (pprint alldoors)
 ;;; (pprint allsdoors)
 ;;; (print-doors-as-clojure alldoors)
@@ -396,6 +448,13 @@
 ;;; (print-world-wide world mca)
 ;;; (export-world-to-file world "/Users/paulr/checkouts/bitbucket/asist_rita/Code/data/falcon-exported-world.json")
 ;;; (def world (import-world-from-file  "/Users/paulr/checkouts/bitbucket/asist_rita/Code/data/exported-world.json"))
+;;; (def data (import-world-from-saved-file "/Users/paulr/checkouts/bitbucket/asist_rita/Code/basemap/Saturn_Feb4.json"))
+;;; (def world (import-world-from-saved-data data))
+;;; (def alldoors (apply concat (map (fn [dtype] (door-finder world dtype)) [:wooden_door :acacia_door :dark_oak_door :iron_door])))
+;;; (find-objects-of-interest world)
+;;; (print-object-of-interest-as-pamela-constructors)
+;;; (print-doors-as-clojure allsdoors)
+
 
 (defn xlate
   [x1 y1 z1 x2 y2 z2]
